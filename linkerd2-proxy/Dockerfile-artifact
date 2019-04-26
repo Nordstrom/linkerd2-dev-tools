@@ -1,0 +1,18 @@
+ARG RUST_IMAGE=rust:1.33.0
+
+## Builds the proxy as incrementally as possible.
+FROM $RUST_IMAGE as build
+
+WORKDIR /usr/src/linkerd2-proxy
+
+## When we create artifacts and upload them to artifactory we need unique names because of immutability
+ARG PROXY_VERSION
+## Artifiactory API Key
+ARG ARTIFACTORY_API_KEY
+
+COPY . .
+
+RUN PACKAGE_VERSION=$PROXY_VERSION make package
+
+RUN export ld_file=$(ls target/debug/package/ | grep -i tar) && \
+ curl -iv -H "X-JFrog-Art-Api:$ARTIFACTORY_API_KEY" -T "target/debug/package/$ld_file" "https://artifactory.nordstrom.com/artifactory/generic-local/linkerd2-proxy/$ld_file"
